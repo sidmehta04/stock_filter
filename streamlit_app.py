@@ -1,9 +1,10 @@
-import yfinance as yf
+import requests
+from bs4 import BeautifulSoup
 import pandas as pd
 import numpy as np
 import streamlit as st
 from PIL import Image
-
+import yfinance as yf
 
 # Function to display About section
 def about_section():
@@ -17,7 +18,6 @@ With our innovative tools and educational content, you can gain confidence in yo
 
 Join the Money Mate Analyzer community today and take the first step towards simplifying stock investments. Let's make the world of finance accessible to all students and beginners who aspire to achieve their financial goals."""
     )
-
 
 # Function to display detailed descriptions of trading strategies
 def strategies_section():
@@ -47,6 +47,52 @@ def strategies_section():
     )
     st.write("Risk-to-Reward Ratio: 1:1")
 
+# Function to fetch and display stock news
+def stock_news_section():
+    st.title("Stock News")
+    selected_ticker = st.sidebar.selectbox(
+        "Select a stock ticker",
+        [
+            "RELIANCE.NS",
+            "INFY.NS",
+            "TATAMOTORS.NS",
+            "WIPRO.NS",
+            "HDFCBANK.NS",
+            "ICICIBANK.NS",
+            "SBI.NS",
+            "AXISBANK.NS",
+            "BHARTIARTL.NS",
+        ],
+    )
+    # Define the URL for stock news. You should replace 'AAPL' with the selected ticker symbol.
+    url = f'https://www.google.com/search?q={selected_ticker}+news'
+
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as errh:
+        st.error(f"HTTP Error: {errh}")
+        return
+    except requests.exceptions.ConnectionError as errc:
+        st.error(f"Connection Error: {errc}")
+        return
+    except requests.exceptions.Timeout as errt:
+        st.error(f"Timeout Error: {errt}")
+        return
+    except requests.exceptions.RequestException as err:
+        st.error(f"Request Exception: {err}")
+        return
+
+    soup = BeautifulSoup(response.text, 'html.parser')
+    headlines = soup.find_all('h3')
+    unwanted = ['BBC World News TV', 'BBC World Service Radio',
+                'News daily newsletter', 'Mobile app', 'Get in touch']
+
+    for x in list(dict.fromkeys(headlines)):
+        if x.text.strip() not in unwanted:
+            # Create a clickable button for each news headline
+            if st.button(x.text.strip()):
+                st.markdown(f"[{x.text.strip()}]({url})")
 
 # Main Streamlit code
 st.set_page_config(
@@ -54,7 +100,7 @@ st.set_page_config(
 )
 
 # Create navigation
-nav_option = st.sidebar.selectbox("Navigation", ("Home", "About", "Strategies","Chatbot"))
+nav_option = st.sidebar.selectbox("Navigation", ("Home", "About", "Strategies", "Stock News"))
 
 # Home page
 if nav_option == "Home":
@@ -172,11 +218,13 @@ if nav_option == "Home":
                     f"The stock {selected_ticker} is not suitable for the {selected_strategy} strategy."
                 )
 
+# About page
 elif nav_option == "About":
     about_section()
 
 # Strategies page
 elif nav_option == "Strategies":
     strategies_section()
-
-
+elif nav_option == "Stock News":
+    
+    stock_news_section()
