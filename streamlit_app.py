@@ -3,31 +3,6 @@ import pandas as pd
 import numpy as np
 import streamlit as st
 from PIL import Image
-import openai  # Import the OpenAI library
-
-# Set up your OpenAI API key
-openai.api_key = "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"  # Replace with your actual API key
-
-# ... (Previous code)
-
-# Function to display the chatbot
-def chatbot():
-    st.title("Chat with the Money Mate Analyzer Chatbot")
-    st.write("Ask any questions about stock trading or strategies, and I'll do my best to assist you!")
-
-    user_question = st.text_input("Ask a question:")
-
-    if st.button("Ask"):
-        if user_question:
-            response = openai.Completion.create(
-                engine="text-davinci-002",
-                prompt=f"Chat with Money Mate Analyzer: {user_question}\n",
-                max_tokens=50, 
-            )
-            chatbot_response = response.choices[0].text
-            st.write("Money Mate Analyzer Chatbot:", chatbot_response)
-        else:
-            st.write("Please enter a question.")
 
 
 # Function to display About section
@@ -204,6 +179,4 @@ elif nav_option == "About":
 elif nav_option == "Strategies":
     strategies_section()
 
-# Chatbot page
-elif nav_option == "Chatbot":
-    chatbot()
+
