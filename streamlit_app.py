@@ -5,6 +5,10 @@ import numpy as np
 import streamlit as st
 from PIL import Image
 import yfinance as yf
+import openai  # Import the OpenAI library
+
+# Set up OpenAI API credentials
+openai.api_key = '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'
 
 # Function to display About section
 def about_section():
@@ -100,7 +104,7 @@ st.set_page_config(
 )
 
 # Create navigation
-nav_option = st.sidebar.selectbox("Navigation", ("Home", "About", "Strategies", "Stock News"))
+nav_option = st.sidebar.selectbox("Navigation", ("Home", "About", "Strategies", "Stock News", "OpenAI Analysis"))
 
 # Home page
 if nav_option == "Home":
@@ -228,3 +232,22 @@ elif nav_option == "Strategies":
 elif nav_option == "Stock News":
     
     stock_news_section()
+if nav_option == "OpenAI Analysis":
+    st.title("OpenAI Chatbot")
+
+    # Get user input
+    user_input = st.text_input("Ask a question:")
+
+    if st.button("Submit"):
+        # Send the user's message to OpenAI's API
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": user_input},
+            ]
+        )
+
+        # Display the AI's response
+        st.subheader("AI Response:")
+        st.write(response.choices[0].message.content)
