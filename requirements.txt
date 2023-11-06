@@ -5,3 +5,5 @@ numpy==1.26.0
 streamlit==1.27.2
 requests==2.31.0
 beautifulsoup4==4.12.2
+bsedata==0.5.4
+
