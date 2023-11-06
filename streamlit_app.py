@@ -3,13 +3,75 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import numpy as np
 import streamlit as st
-from PIL import Image
+
+from bsedata.bse import BSE
 import yfinance as yf
 import openai
- # Import the OpenAI library
 
 # Set up OpenAI API credentials
-openai.api_key = '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'
+openai.api_key = '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'
+# Function to fetch fundamental data and give advice
+stock_name_to_code = {
+    "Reliance": "500325",
+    "Tata Motors": "500570",
+    "Infosys": "500209",
+    "Wipro": "507685",
+    "HDFC Bank": "500180",
+    "ICICI Bank": "532174",
+    "SBI": "500112",
+    "Axis Bank": "532215",
+    "Bharti Airtel": "532454",
+    "TCS": "532540",
+    "HCL Tech": "532281",
+    "L&T": "500510",
+    "ITC": "500875",
+    "Bajaj Finance": "500034",
+    "Hind Unilever": "500696",
+    # Add more mappings as needed
+}
+
+def get_stock_description(stock_name):
+    # Constructing the prompt for the AI to generate the stock description
+    prompt = f"Write a concise and informative description of the stock named {stock_name}."
+
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": prompt},
+        ]
+    )
+    return response.choices[0].message.content
+# Placeholder function to simulate fundamental analysis retrieval
+def get_fundamental_analysis(stock_code):
+    # Here you would fetch and return the fundamental analysis data for the stock code
+    # This is just a placeholder with simulated data
+    return {
+        "PE Ratio": np.random.uniform(10, 30),
+        "Market Cap": np.random.uniform(100e7, 500e7)
+    }
+
+# Placeholder function to simulate technical analysis (moving average calculation)
+def get_technical_analysis(stock_code):
+    # Here you would fetch historical stock data and calculate technical indicators
+    # This is just a placeholder with simulated data
+    closing_prices = np.random.uniform(100, 200, 50)  # Simulating 50 days of closing prices
+    moving_average = np.mean(closing_prices)
+    return {
+        "50-Day Moving Average": moving_average
+    }
+
+# Function to provide analysis based on stock name
+def stock_analysis(stock_name):
+    stock_code = stock_name_to_code.get(stock_name)
+    if not stock_code:
+        return "Stock name not found. Please check the name and try again."
+    
+    fundamental_analysis = get_fundamental_analysis(stock_code)
+    technical_analysis = get_technical_analysis(stock_code)
+    
+    return fundamental_analysis, technical_analysis
+
 
 # Function to display About section
 def about_section():
@@ -70,7 +132,7 @@ def stock_news_section():
         ],
     )
     # Define the URL for stock news. You should replace 'AAPL' with the selected ticker symbol.
-    url = f'https://www.google.com/search?q={selected_ticker}+news'
+    url = f'https://www.google.com/search?q={selected_ticker}+stock+news&oq={selected_ticker}+stock+news&gs_lcrp=EgZjaHJvbWUyBggAEEUYOTIGCAEQRRg80gEINDU3M2owajSoAgCwAgA&sourceid=chrome&ie=UTF-8'
 
     try:
         response = requests.get(url)
@@ -99,6 +161,35 @@ def stock_news_section():
             if st.button(x.text.strip()):
                 st.markdown(f"[{x.text.strip()}]({url})")
 
+def retrieve_fundamental_data(selected_ticker):
+    # Fetch live financial data from Yahoo Finance
+    stock = yf.Ticker(selected_ticker)
+    balance_sheet = stock.balance_sheet
+
+    # Get the most recent year's data
+    most_recent_year_data = balance_sheet.iloc[0]
+
+    # Get the previous year's data
+    previous_year_data = balance_sheet.iloc[1]
+
+    # Calculate revenue growth (Year over Year)
+    current_year_revenue = most_recent_year_data.get("Total Revenue", 0)
+    previous_year_revenue = previous_year_data.get("Total Revenue", 0)
+
+    if previous_year_revenue == 0:
+        revenue_growth = None
+    else:
+        revenue_growth = (current_year_revenue - previous_year_revenue) / previous_year_revenue
+
+    # Calculate profit margin
+    current_year_profit = most_recent_year_data.get("Net Income", 0)
+    if current_year_revenue == 0:
+        profit_margin = None
+    else:
+        profit_margin = (current_year_profit / current_year_revenue)
+
+    return revenue_growth, profit_margin
+
 # Main Streamlit code
 st.set_page_config(
     page_title="Stock Trading Strategy Analyzer", page_icon=":chart_with_upwards_trend:"
@@ -125,6 +216,8 @@ if nav_option == "Home":
             "SBI.NS",
             "AXISBANK.NS",
             "BHARTIARTL.NS",
+            "AAPL",
+            "AMZN"
         ],
     )
 
@@ -157,12 +250,15 @@ if nav_option == "Home":
     risk_to_reward = {"Golden Cross": 2, "MACD": 5 / 3, "RSI": 6 / 2, "SMA": 1}
 
     # Golden Cross Strategy
-    def golden_cross(data):
+    def golden_cross(data, selected_ticker):
+        # Check if fundamental criteria are met
+        if not retrieve_fundamental_data(selected_ticker):
+            return 0, 0
+
         data["50_MA"] = data["Close"].rolling(window=50).mean()
         data["200_MA"] = data["Close"].rolling(window=200).mean()
         buy_signal = np.where(data["50_MA"] > data["200_MA"], 1, 0)
         return buy_signal[-1], data["Close"].iloc[-1]
-
     # MACD Strategy
     def macd(data):
         exp12 = data["Close"].ewm(span=12, adjust=False).mean()
@@ -196,32 +292,35 @@ if nav_option == "Home":
         "SMA": sma,
     }
 
-    # Analyze Strategy
-    if st.button("Analyze Strategy"):
-        st.header("Analysis Result")
-        st.write("Analyzing...")
+if st.button("Analyze Strategy"):
+    st.header("Analysis Result")
+    st.write("Analyzing...")
 
-        # Fetch real-time data
-        stock_data = yf.download(selected_ticker, period="5d", interval="1m")
+    # Fetch real-time data
+    stock_data = yf.download(selected_ticker, period="5d", interval="1m")
 
-        # Apply selected strategy (assuming you've collected enough data)
-        if len(stock_data) >= 200:
+    # Apply selected strategy (assuming you've collected enough data)
+    if len(stock_data) >= 200:
+        if selected_strategy == "Golden Cross":
+            buy_signal, buy_price = golden_cross(stock_data.copy(), selected_ticker)
+        else:
             buy_signal, buy_price = strategy_function_mapping[selected_strategy](
                 stock_data.copy()
             )
-            if buy_signal > 0:
-                target_price = buy_price * (1 + risk_to_reward[selected_strategy] / 100)
-                stop_loss = buy_price * (1 - risk_to_reward[selected_strategy] / 100)
-                st.write(
-                    f"The stock {selected_ticker} is suitable for the {selected_strategy} strategy."
-                )
-                st.write(f"Buy Price: {buy_price:.2f}")
-                st.write(f"Target Price: {target_price:.2f}")
-                st.write(f"Stop Loss: {stop_loss:.2f}")
-            else:
-                st.write(
-                    f"The stock {selected_ticker} is not suitable for the {selected_strategy} strategy."
-                )
+
+        if buy_signal > 0:
+            target_price = buy_price * (1 + risk_to_reward[selected_strategy] / 100)
+            stop_loss = buy_price * (1 - risk_to_reward[selected_strategy] / 100)
+            st.write(
+                f"The stock {selected_ticker} is suitable for the {selected_strategy} strategy."
+            )
+            st.write(f"Buy Price: {buy_price:.2f}")
+            st.write(f"Target Price: {target_price:.2f}")
+            st.write(f"Stop Loss: {stop_loss:.2f}")
+        else:
+            st.write(
+                f"The stock {selected_ticker} is not suitable for the {selected_strategy} strategy."
+            )
 
 # About page
 elif nav_option == "About":
@@ -233,22 +332,27 @@ elif nav_option == "Strategies":
 elif nav_option == "Stock News":
     
     stock_news_section()
+
 if nav_option == "OpenAI Analysis":
-    st.title("OpenAI Chatbot")
+    # OpenAI Stock Advisor section now accepts stock names
+    st.title("OpenAI Stock Advisor")
 
-    # Get user input
-    user_input = st.text_input("Ask a question:")
+    # Get user input for stock name
+    stock_name = st.text_input("Enter the stock name for advice:")
+    
+    if st.button("Get Analysis"):
+        # Get the financial and technical analysis based on stock name
+        result = stock_analysis(stock_name)
+        
+        if isinstance(result, tuple):
+            fundamental_data, technical_data = result
+            st.subheader("Fundamental Analysis")
+            st.json(fundamental_data)
+            st.subheader("Technical Analysis")
+            st.json(technical_data)
+            description = get_stock_description(stock_name)
+            st.subheader("Stock Description")
+            st.write(description)
 
-    if st.button("Submit"):
-        # Send the user's message to OpenAI's API
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": user_input},
-            ]
-        )
-
-        # Display the AI's response
-        st.subheader("AI Response:")
-        st.write(response.choices[0].message.content)
+        else:
+            st.error(result)
