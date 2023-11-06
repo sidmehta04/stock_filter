@@ -9,7 +9,7 @@ import yfinance as yf
 import openai
 
 # Set up OpenAI API credentials
-openai.api_key = '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'
+openai.api_key = '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'
 # Function to fetch fundamental data and give advice
 stock_name_to_code = {
     "Reliance": "500325",
